@@ -1,107 +1,95 @@
-var express = require('express');
-var app = express();
-var bodyParser = require('body-parser');
-var mongoose = require('mongoose');
-var Book = require('./Book.model');
+// import * as express from 'express';
+// import mongoose from 'mongoose';
+// import bodyParser from 'body-parser'
 
-var port = 8080;
-var db = 'mongodb://localhost/example'
+const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const user = require('./model/userModel');
+const job = require('./model/jobModel');
+const apply = require('./model/applyModel');
+const port = process.env.DEV1 || 5001;
+const app = express();
+app.use(bodyParser.json());
+const db = 'mongodb://127.0.0.1:27017/naukri'
+mongoose.connect(db, (err) => {
 
-mongoose.connect(db);
+    if (err) throw err;
 
-app.use(bodyParser.json())
-app.use(bodyParser.urlencoded({
-  extended: true
-}));
+    console.log('Successfully connected to db');
 
-app.get('/', function(req, res) {
-  res.send('happy to be here');
 });
+//mongoose.Promise =global.Promise;
+//----------get all users list -----------------
+app.get('/users', (req, res) => {
+    user.find({}).exec((err, userlist) => {
+        if (err) {
+            console.log("No data found")
+            res.send("error")
+        } else {
+            console.log("fetched user list")
+            res.send(userlist)
+        }
 
-app.get('/books', function(req, res) {
-  console.log('getting all books');
-  Book.find({})
-    .exec(function(err, books) {
-      if(err) {
-        res.send('error occured')
-      } else {
-        console.log(books);
-        res.json(books);
-      }
-    });
-});
-
-app.get('/books/:id', function(req, res) {
-  console.log('getting all books');
-  Book.findOne({
-    _id: req.params.id
     })
-    .exec(function(err, books) {
-      if(err) {
-        res.send('error occured')
-      } else {
-        console.log(books);
-        res.json(books);
-      }
-    });
-});
+})
+//----------get user by id-----------------
+app.get('/users/:id', (req, res) => {
+    user.find({ _id: req.params.id }).exec((err, user) => {
+        if (err) {
+            console.log("No data found")
+            res.send("error")
+        } else {
+            console.log("fetched user list")
+            res.send(user)
+        }
 
-app.post('/book', function(req, res) {
-  var newBook = new Book();
+    })
 
-  newBook.title = req.body.title;
-  newBook.author = req.body.author;
-  newBook.category = req.body.category;
+})
 
-  newBook.save(function(err, book) {
-    if(err) {
-      res.send('error saving book');
-    } else {
-      console.log(book);
-      res.send(book);
+//----------post user----------------
+app.post('/users', (req, res) => {
+    let userdata = new user();
+    userdata.name = req.body.name;
+    userdata.email = req.body.email;
+    userdata.type = req.body.type;
+    if (req.body.location) {
+        userdata.location.long = req.body.location.long;
+        userdata.location.lat = req.body.location.lat;
+
     }
-  });
-});
+    userdata.save((err, users) => {
+        if (err) {
+            res.send(err)
+        } else {
+            res.send(users);
+        }
+    })
 
-app.post('/book2', function(req, res) {
-  Book.create(req.body, function(err, book) {
-    if(err) {
-      res.send('error saving book');
-    } else {
-      console.log(book);
-      res.send(book);
-    }
-  });
-});
+})
+//----------update user-----------------
+app.put('/users/:id', (req, res) => {
+    user.findOneAndUpdate({ _id: req.params.id }, { $set: { name: req.body.name } }, { new: true }, (err, element) => {
+        if (err) {
+            res.send(err)
+        } else {
+            res.send(element);
+        }
+    })
+})
+//----------delete user-----------------
+app.delete('/users/:id', (req, res) => {
+    user.findByIdAndDelete({ _id: req.params.id }, (err, element) => {
+        if (err) {
+            res.send(err)
+        } else {
+            res.send(element);
+        }
+    })
+})
 
-app.put('/book/:id', function(req, res) {
-  Book.findOneAndUpdate({
-    _id: req.params.id
-    },
-    { $set: { title: req.body.title }
-  }, {upsert: true}, function(err, newBook) {
-    if (err) {
-      res.send('error updating ');
-    } else {
-      console.log(newBook);
-      res.send(newBook);
-    }
-  });
-});
 
-app.delete('/book/:id', function(req, res) {
-  Book.findOneAndRemove({
-    _id: req.params.id
-  }, function(err, book) {
-    if(err) {
-      res.send('error removing')
-    } else {
-      console.log(book);
-      res.status(204);
-    }
-  });
-});
-
-app.listen(port, function() {
-  console.log('app listening on port ' + port);
-});
+app.listen(port, () => {
+    console.log("server listening on port " + port);
+})
